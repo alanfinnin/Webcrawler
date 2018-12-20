@@ -23,3 +23,4 @@ if(line.contains("@") && (line.contains(".com") || line.contains(".net")))
 		if(email.contains("@") && (email.contains(".com") || email.contains(".net") || email.contains(".ie")))
 			emailArray.add(email);
 	}
+}
