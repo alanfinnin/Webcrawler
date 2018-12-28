@@ -4,90 +4,56 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Locale;
 import java.util.Scanner;
-import java.util.Timer;
 import java.util.ArrayList;
-import java.net.URI;
-import java.io.IOException;
 
 public class WebCrawler {
     /*
         The parameters for the webcrawler
      */
-    private final static boolean readUrlFromCmdLine = true;
-    private static int numberOfUrlsToTraverse = 100;
-    private final static String urlPrefix = "http:";
-    private final static String urlInputFilepath = "URLs_TO_CRAWL";
-    private final static String crawledUrlsFilepath = "URLs_CRAWLED";
-    private final static String errorLogFilepath = "ERROR_LOG_CRAWLER";
-	private static String wordToFind = "";
-	private static String search = "n";
+    private final static boolean READ_URL_FROM_CMD_LINE = true;
+    private final static int NUMBER_OF_URLS_TO_TRAVERSE = 10;
+    private final static String URL_PREFIX = "http:";
+    private final static String URL_INPUT_FILEPATH = "URLs_TO_CRAWL";
+    private final static String CRAWLED_URLS_FILEPATH = "URLs_CRAWLED";
+    private final static String ERROR_LOG_FILEPATH = "ERROR_LOG_CRAWLER";
+	private final static String EMAILS_GRABBED_FILEPATH = "EMAILS_GRABBED";
     private static ArrayList<String> errorLog = new ArrayList<>();
     private static ArrayList<String> successfullyCrawledUrls = new ArrayList<>();
+	private static ArrayList<String> emailLog = new ArrayList<String>();
+	private static ArrayList<String> emailArray = new ArrayList<>();
 
 
     public static void main(String[] args) {
-        ArrayList<String> urlsToCrawl = initialiseCrawler(readUrlFromCmdLine);
-		try
-		{
-		   for(String currentCrawlUrl : urlsToCrawl){
-				crawler(currentCrawlUrl); // Traverse the Web from the a starting url
-			}
-		}
-		catch(Exception e)
-		{
-			System.out.println("Exception caught:\n" + e);
-		}
-		finally
-		{
-			dumpArraylistsToFile();
-			System.out.println("Crawling Complete.");
-		}
+        ArrayList<String> urlsToCrawl = initialiseCrawler(READ_URL_FROM_CMD_LINE);
+
+        for(String currentCrawlUrl : urlsToCrawl){
+            crawler(currentCrawlUrl); // Traverse the Web from the a starting url
+        }
+        dumpArraylistsToFile();
+        System.out.println("Crawling Complete.");
     }
 
     private static ArrayList<String> initialiseCrawler(boolean readUrlsFromCmdline){
-        FileIO.fileCheck(urlInputFilepath);
-        FileIO.fileCheck(crawledUrlsFilepath);
-        FileIO.fileCheck(errorLogFilepath);
+        FileIO.fileCheck(URL_INPUT_FILEPATH);
+        FileIO.fileCheck(CRAWLED_URLS_FILEPATH);
+        FileIO.fileCheck(ERROR_LOG_FILEPATH);
+		FileIO.fileCheck(EMAILS_GRABBED_FILEPATH);
         ArrayList<String> urlsToCrawl = new ArrayList<>();
-		
-		Scanner input = new Scanner(System.in);
-		System.out.print("Do you want to enter from cmd? (y/n): ");
-		String checkBool = input.nextLine();
-		if(checkBool.equals("n"))
-			readUrlsFromCmdline = false;
         if(readUrlsFromCmdline){
-			int numberToTraverse;;
-			
-			System.out.print("Enter a URL: ");
-			String url = input.nextLine();
-			
-			System.out.print("How many traversels do you want?: ");
-			String StringOfTreverse = input.nextLine();
-			
-			System.out.print("Do you want to find a word? (y/n): ");
-			search = input.nextLine();
-			
-			if(search.equals("y")){
-				System.out.print("What word?: ");
-				wordToFind = input.nextLine();
-			}
-			try
-			{
-				numberToTraverse = Integer.parseInt(StringOfTreverse);
-				numberOfUrlsToTraverse = numberToTraverse;
-			}
-			catch(NumberFormatException e)
-			{}
-			urlsToCrawl.add(url);
+            Scanner input = new Scanner(System.in);
+            System.out.print("Enter a URL: ");
+            String url = input.nextLine();
+            urlsToCrawl.add(url);
         }else {
-            urlsToCrawl = FileIO.readFromUrlFile(urlInputFilepath);
+            urlsToCrawl = FileIO.readFromUrlFile(URL_INPUT_FILEPATH);
         }
         return urlsToCrawl;
     }
 
     private static void dumpArraylistsToFile(){
-        FileIO.writeUrlsToFile(crawledUrlsFilepath, successfullyCrawledUrls);
-        FileIO.writeUrlsToFile(errorLogFilepath, errorLog);
+        FileIO.writeUrlsToFile(CRAWLED_URLS_FILEPATH, successfullyCrawledUrls);
+        FileIO.writeUrlsToFile(ERROR_LOG_FILEPATH, errorLog);
+		FileIO.writeUrlsToFile(EMAILS_GRABBED_FILEPATH, emailArray);
     }
 
     public static void crawler(String startingURL) {
@@ -95,24 +61,15 @@ public class WebCrawler {
         ArrayList<String> listOfPendingURLs = new ArrayList<>();
         ArrayList<String> listOfTraversedURLs = new ArrayList<>();
 
-		listOfPendingURLs.add(startingURL);
-		while(!listOfPendingURLs.isEmpty() &&
-				listOfTraversedURLs.size() <= numberOfUrlsToTraverse) {
-			String urlString = listOfPendingURLs.remove(0);
-			if(!(urlString.contains("w3") || urlString.contains("<") || urlString.length() > 80))
+
+        listOfPendingURLs.add(startingURL);
+        while (!listOfPendingURLs.isEmpty() &&
+                listOfTraversedURLs.size() <= NUMBER_OF_URLS_TO_TRAVERSE) {
+            String urlString = listOfPendingURLs.remove(0);
+			if(!(urlString.contains("w3")))
 			{
-				if(urlString.contains(wordToFind) && search.equals("y"))
-				{
-					try{
-					java.awt.Desktop.getDesktop().browse(new URI(urlString));
-					System.exit(0);
-					}
-					catch(Exception e)
-					{}
-				}
+				System.out.println(urlString);
 				listOfTraversedURLs.add(urlString);
-				System.out.println(listOfTraversedURLs.size() + 1 + ": " + urlString);
-				
 				successfullyCrawledUrls.add(urlString + "\r\n");
 
 				for (String s: getSubURLs(urlString)) {
@@ -121,24 +78,109 @@ public class WebCrawler {
 						listOfPendingURLs.add(s);
 				}
 			}
-		}
+        }
     }
 
     public static ArrayList<String> getSubURLs(String urlString) {
         ArrayList<String> list = new ArrayList<>();
+
         try {
             java.net.URL url = new java.net.URL(urlString);
             Scanner input = new Scanner(url.openStream());
             int current = 0;
-			int endIndex = 0;
+			String subCheck = "";
+			String email = "";
+			String emailLine = "";
             while (input.hasNext()) {
                 String line = input.nextLine();
-                current = line.indexOf(urlPrefix, current);
+				if(line.contains("@"))
+				{
+					if(line.contains(".com") || line.contains(".net") || line.contains(".ie"))
+					{
+						try
+						{
+							emailLine = line;
+							if(!(emailLine.contains(" ")))
+							{
+								if(emailLine.contains("gmail"))
+								{
+									if(emailLine.contains("ie"))
+										emailLine = line.substring((0), (line.indexOf("@")+9));
+									else
+										emailLine = line.substring((0), (line.indexOf("@")+10));
+									emailLine = emailLine.trim();
+									emailArray.add(emailLine);
+								}
+								else if (emailLine.contains("yahoo"))
+								{
+									if(emailLine.contains("ie"))
+										emailLine = line.substring((0), (line.indexOf("@")+9));
+									else
+										emailLine = line.substring((0), (line.indexOf("@")+10));
+									emailLine = emailLine.trim();
+									emailArray.add(emailLine);
+								}
+								else if (emailLine.contains("outlook"))
+								{
+									if(emailLine.contains("ie"))
+										emailLine = line.substring((0), (line.indexOf("@")+11));
+									else
+										emailLine = line.substring((0), (line.indexOf("@")+12));
+									emailLine = emailLine.trim();
+									emailArray.add(emailLine);
+								}
+								else if (emailLine.contains("studentmail"))
+								{
+									emailLine = line.substring((0), (line.indexOf("@")+18));
+									emailArray.add(emailLine);
+								}
+							}
+							else if(emailLine.contains("gmail"))
+							{
+								if(emailLine.contains("ie"))
+									emailLine = line.substring((line.lastIndexOf(" ")), (line.indexOf("@")+8));
+								else
+									emailLine = line.substring((line.lastIndexOf(" ")), (line.indexOf("@")+9));
+								emailLine = emailLine.trim();
+								emailArray.add(emailLine);
+							}
+							else if (emailLine.contains("yahoo"))
+							{
+								if(emailLine.contains("ie"))
+									emailLine = line.substring((line.lastIndexOf(" ")), (line.indexOf("@")+9));
+								else
+									emailLine = line.substring((line.lastIndexOf(" ")), (line.indexOf("@")+10));
+								emailLine = emailLine.trim();
+								emailArray.add(emailLine);
+							}
+							else if (emailLine.contains("outlook"))
+							{
+								if(emailLine.contains("ie"))
+									emailLine = line.substring((line.lastIndexOf(" ")), (line.indexOf("@")+11));
+								else
+									emailLine = line.substring((line.lastIndexOf(" ")), (line.indexOf("@")+12));
+								emailLine = emailLine.trim();
+								emailArray.add(emailLine);
+							}
+							else if (emailLine.contains("studentmail"))
+							{
+								emailLine = line.substring((line.lastIndexOf(" ")), (line.indexOf("@")+18));
+								emailLine = emailLine.trim();
+								emailArray.add(emailLine);
+							}
+						}
+						catch(Exception e)
+						{
+							System.out.println("Error\n" + emailLine + "\n" + e);
+						}
+					}
+				}
+                current = line.indexOf(URL_PREFIX, current);
                 while (current > 0) {
-                    endIndex = line.indexOf("\"", current);
+                    int endIndex = line.indexOf("\"", current);
                     if (endIndex > 0) { // Ensure that a correct URL is found
                         list.add(line.substring(current, endIndex));
-                        current = line.indexOf(urlPrefix, endIndex);
+                        current = line.indexOf(URL_PREFIX, endIndex);
                     }
                     else
                         current = -1;
