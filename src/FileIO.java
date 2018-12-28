@@ -72,7 +72,7 @@ public class FileIO {
             File urlFile = new File(filepath);
             FileWriter writer = new FileWriter(urlFile, true);
             for(String currentUrl : listOfUrls)
-                writer.write(currentUrl);
+                writer.write(currentUrl + "\r\n");
             writer.flush();
             writer.close();
         }
